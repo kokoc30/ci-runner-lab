@@ -1,0 +1,30 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createReport } from '../src/report.js';
+import { analyze, timing, distribution, costs, scenarioInputs, runnerClass, compareReports } from '../src/analysis.js';
+const job=(start,end,labels=['ubuntu-latest'],conclusion='success')=>({id:1,name:'test',status:'completed',conclusion,startedAt:start===null?null:new Date(start).toISOString(),completedAt:end===null?null:new Date(end).toISOString(),labels,url:null});
+const run=(jobs,extra={})=>({id:1,attempt:1,workflow:'ci',name:'CI',branch:'main',event:'push',sha:'a',conclusion:'success',createdAt:new Date(0).toISOString(),jobs,jobsComplete:true,...extra});
+function report(jobs=[job(1000,61001)],isPrivate=false){const r=createReport('audit');r.source.private=isPrivate;r.runs=[run(jobs)];return analyze(r);}
+test('parallel time is not aggregate time',()=>{const t=timing(run([job(1000,61000),job(1000,121000)]));assert.equal(t.spanMs,120000);assert.equal(t.aggregateMs,180000);assert.equal(t.triggerToLastMs,121000);});
+test('sequential duration and retry trigger interval',()=>{const t=timing(run([job(0,60000),job(60000,120000)],{attempt:2}));assert.equal(t.spanMs,120000);assert.equal(t.aggregateMs,120000);assert.equal(t.triggerToLastMs,null);});
+for(const [name,j] of [['missing',job(null,1000)],['reversed',job(2000,1000)],['skipped',job(0,1000,[],'skipped')],['invalid',{...job(0,1000),startedAt:'bad'}],['incomplete',{...job(0,1000),status:'in_progress'}]]) test(`timing ${name} stays unknown`,()=>{assert.equal(timing(run([j])).spanMs,null);});
+test('median handles even/odd/missing values without percentiles',()=>{assert.equal(distribution([4,1,2,3]).medianMs,2.5);assert.equal(distribution([3,1,2]).medianMs,2);assert.equal(distribution([null,NaN]).medianMs,null);});
+test('group by workflow branch event; failed/cancelled excluded from speed',()=>{
+  const r=report();r.runs.push(run([job(0,9000)],{id:2,workflow:'deploy'}),run([job(0,8000)],{id:3,event:'pull_request'}),run([job(0,7000)],{id:4,conclusion:'cancelled'}),run([job(0,6000)],{id:5,conclusion:'failure'}));analyze(r);
+  assert.equal(r.metrics.groups.length,3);assert.equal(r.metrics.groups[0].span.n,1);assert.equal(r.metrics.groups[0].excludedRuns,2);
+});
+test('public standard compute is zero',()=>assert.equal(report().costScenario.knownSubtotalUsd,0));
+test('private prices round per job and include failures',()=>{const r=report([job(0,1001),job(0,1001,['ubuntu-latest'],'failure')],true);assert.equal(r.costScenario.knownSubtotalUsd,0.012);});
+test('larger custom runner and missing duration stay unknown; known subtotal retained',()=>{const c=report([job(0,1000),job(0,1000,['custom-large']),job(null,1000)],true).costScenario;assert.equal(c.knownSubtotalUsd,0.006);assert.equal(c.unknownJobs,2);assert.equal(runnerClass(['ubuntu-latest','custom']),null);});
+test('self-hosted zero GitHub usage does not imply zero operating cost',()=>{const c=report([job(0,1000,['self-hosted','linux'])],true).costScenario;assert.equal(c.knownSubtotalUsd,0);assert.match(c.exclusions.join(' '),/hardware/);});
+test('unknown visibility remains unknown',()=>assert.equal(report([job(0,1000)],null).costScenario.knownSubtotalUsd,null));
+test('incomplete and stale rate tables remain visible',()=>{const r=report();r.status='partial';assert.equal(costs(r,{},new Date('2027-04-01')).rateTableStale,true);assert.equal(costs(r).incomplete,true);});
+test('monthly scenarios require explicit runs and homogeneous complete sample',()=>{const r=report();assert.equal(costs(r,{monthlyRuns:10}).monthlyScenarioUsd,null);r.runs.push({...r.runs[0],id:2},{...r.runs[0],id:3});assert.equal(costs(r,{monthlyRuns:10}).monthlyScenarioUsd,0);r.runs[2].event='pull_request';assert.equal(costs(r,{monthlyRuns:10}).monthlyScenarioUsd,null);});
+test('energy scenario uses supplied watts and measured seconds only',()=>{const r=report();r.benchmarks={status:'passed',summary:{medianMs:3600000}};assert.ok(Math.abs(costs(r,{powerWatts:100,kwhPrice:0.2}).energyScenarioUsd-0.02)<1e-12);assert.equal(costs(r,{powerWatts:100}).energyScenarioUsd,null);});
+for(const v of [-1,'bad',Infinity])test(`reject invalid scenario ${v}`,()=>assert.throws(()=>scenarioInputs({powerWatts:v})));
+test('monthly zero rejected',()=>assert.throws(()=>scenarioInputs({monthlyRuns:0})));
+function pair(before=100,after=80){const b=report(),a=report();for(const [r,ms] of [[b,before],[a,after]]){r.runs=[1,2,3].map((id)=>run([job(0,ms)],{id:id+(r===a?10:0)}));analyze(r);}return [b,a];}
+test('comparison arithmetic is descriptive; negative means slower',()=>{assert.equal(compareReports(...pair()).relativeMedianChangePercent,20);assert.equal(compareReports(...pair(100,120)).relativeMedianChangePercent,-20);assert.match(compareReports(...pair()).warnings[0],/not a controlled/);});
+test('comparison zero and missing baselines',()=>{assert.equal(compareReports(...pair(0,10)).relativeMedianChangePercent,null);const [b,a]=pair();b.metrics.groups=[];assert.equal(compareReports(b,a).relativeMedianChangePercent,null);});
+test('comparison exposes workload environment revision overlap and sample differences',()=>{const [b,a]=pair();a.runs[0].id=b.runs[0].id;a.source.revision='different';a.runs[0].jobs[0].labels=['windows-latest'];a.metrics.groups[0].span.n=2;const c=compareReports(b,a);assert.equal(c.comparable,false);for(const pattern of [/overlap/,/Revisions/,/environment/,/Insufficient/,/sizes differ/])assert.ok(c.warnings.some(x=>pattern.test(x)));});
+test('findings keep evidence and confidence including public self-hosted risk',()=>{const r=report();r.device={os:'win32',architecture:'x64'};r.workflows=[{file:'x.yml',triggers:['push','pull_request'],concurrency:null,jobs:[{id:'test',name:'test',runners:['self-hosted','macos-latest'],needs:[],timeoutMinutes:null,unresolvedRunner:false,matrix:true,reusable:null,services:true,container:false}]}];analyze(r);assert.ok(r.findings.some(x=>x.id.startsWith('exposure')));assert.ok(r.findings.some(x=>x.id.startsWith('platform')));assert.ok(r.findings.every(x=>x.evidence&&x.confidence&&x.nextAction));});

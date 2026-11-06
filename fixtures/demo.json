@@ -1,0 +1,314 @@
+{
+  "schemaVersion": 1,
+  "toolVersion": "0.1.0",
+  "generatedAt": "2026-11-06T19:11:45.152Z",
+  "mode": "demo",
+  "status": "complete",
+  "source": {
+    "kind": "synthetic",
+    "label": "example/widget — synthetic demo",
+    "repo": "example/widget",
+    "private": false,
+    "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "url": null
+  },
+  "device": {
+    "os": "linux",
+    "osRelease": "synthetic",
+    "architecture": "x64",
+    "node": "v24 (synthetic)",
+    "npm": "11 (synthetic)",
+    "cpuModel": "Example 8-core CPU (synthetic)",
+    "logicalCpus": 8,
+    "parallelism": 8,
+    "totalBytes": 17179869184,
+    "freeBytes": 12884901888,
+    "memoryLimitBytes": 17179869184,
+    "availableBytes": 12884901888,
+    "diskFreeBytes": 128849018880,
+    "githubCli": "not checked (demo)",
+    "planning": {
+      "cpuSlots": 6,
+      "bufferBytes": 4294967296,
+      "spareBytes": 8589934592,
+      "workers": 4,
+      "workerAssumptionBytes": 2147483648,
+      "confidence": "inferred",
+      "advice": "Consider 1–4 test workers initially, subject to workload measurement."
+    },
+    "limitations": [
+      "Synthetic device; this is not a snapshot of the current computer.",
+      "Capacity planning assumes 2 GiB per worker, reserves RAM/CPU, and does not enforce resource limits."
+    ]
+  },
+  "coverage": {
+    "requested": 5,
+    "sampled": 5,
+    "excluded": [],
+    "notes": [
+      "SYNTHETIC DEMO: fictional workflow metadata, timings and device.",
+      "Only latest attempts; earlier attempt usage is excluded.",
+      "Static source revision differs from historical run SHAs."
+    ]
+  },
+  "workflows": [
+    {
+      "file": "ci.yml",
+      "name": "CI",
+      "triggers": [
+        "push",
+        "pull_request"
+      ],
+      "jobs": [
+        {
+          "id": "test",
+          "name": "test",
+          "runners": [
+            "ubuntu-latest"
+          ],
+          "unresolvedRunner": false,
+          "needs": [],
+          "timeoutMinutes": null,
+          "concurrency": null,
+          "permissions": null,
+          "services": false,
+          "container": false,
+          "matrix": false,
+          "reusable": null
+        },
+        {
+          "id": "build",
+          "name": "build",
+          "runners": [
+            "ubuntu-latest"
+          ],
+          "unresolvedRunner": false,
+          "needs": [
+            "test"
+          ],
+          "timeoutMinutes": null,
+          "concurrency": null,
+          "permissions": null,
+          "services": false,
+          "container": false,
+          "matrix": false,
+          "reusable": null
+        }
+      ],
+      "concurrency": null,
+      "permissions": null
+    }
+  ],
+  "runs": [
+    {
+      "id": 100,
+      "attempt": 1,
+      "workflow": "1",
+      "name": "CI",
+      "branch": "main",
+      "event": "push",
+      "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "conclusion": "success",
+      "createdAt": "2026-11-01T09:59:45.000Z",
+      "url": null,
+      "jobsComplete": true,
+      "jobs": [
+        {
+          "id": 1000,
+          "name": "Test (Node 24)",
+          "status": "completed",
+          "conclusion": "success",
+          "labels": [
+            "ubuntu-latest"
+          ],
+          "startedAt": "2026-11-01T10:00:00.000Z",
+          "completedAt": "2026-11-01T10:02:35.000Z",
+          "url": null
+        },
+        {
+          "id": 1001,
+          "name": "Build package",
+          "status": "completed",
+          "conclusion": "success",
+          "labels": [
+            "ubuntu-latest"
+          ],
+          "startedAt": "2026-11-01T10:00:30.000Z",
+          "completedAt": "2026-11-01T10:01:52.000Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "id": 101,
+      "attempt": 1,
+      "workflow": "1",
+      "name": "CI",
+      "branch": "main",
+      "event": "push",
+      "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "conclusion": "success",
+      "createdAt": "2026-11-02T09:59:45.000Z",
+      "url": null,
+      "jobsComplete": true,
+      "jobs": [
+        {
+          "id": 1002,
+          "name": "Test (Node 24)",
+          "status": "completed",
+          "conclusion": "success",
+          "labels": [
+            "ubuntu-latest"
+          ],
+          "startedAt": "2026-11-02T10:00:00.000Z",
+          "completedAt": "2026-11-02T10:02:43.000Z",
+          "url": null
+        },
+        {
+          "id": 1003,
+          "name": "Build package",
+          "status": "completed",
+          "conclusion": "success",
+          "labels": [
+            "ubuntu-latest"
+          ],
+          "startedAt": "2026-11-02T10:00:30.000Z",
+          "completedAt": "2026-11-02T10:01:57.000Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "id": 102,
+      "attempt": 1,
+      "workflow": "1",
+      "name": "CI",
+      "branch": "main",
+      "event": "push",
+      "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "conclusion": "success",
+      "createdAt": "2026-11-03T09:59:45.000Z",
+      "url": null,
+      "jobsComplete": true,
+      "jobs": [
+        {
+          "id": 1004,
+          "name": "Test (Node 24)",
+          "status": "completed",
+          "conclusion": "success",
+          "labels": [
+            "ubuntu-latest"
+          ],
+          "startedAt": "2026-11-03T10:00:00.000Z",
+          "completedAt": "2026-11-03T10:02:51.000Z",
+          "url": null
+        },
+        {
+          "id": 1005,
+          "name": "Build package",
+          "status": "completed",
+          "conclusion": "success",
+          "labels": [
+            "ubuntu-latest"
+          ],
+          "startedAt": "2026-11-03T10:00:30.000Z",
+          "completedAt": "2026-11-03T10:02:02.000Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "id": 103,
+      "attempt": 1,
+      "workflow": "1",
+      "name": "CI",
+      "branch": "feature/widget",
+      "event": "pull_request",
+      "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "conclusion": "success",
+      "createdAt": "2026-11-04T09:59:45.000Z",
+      "url": null,
+      "jobsComplete": true,
+      "jobs": [
+        {
+          "id": 1006,
+          "name": "Test (Node 24)",
+          "status": "completed",
+          "conclusion": "success",
+          "labels": [
+            "ubuntu-latest"
+          ],
+          "startedAt": "2026-11-04T10:00:00.000Z",
+          "completedAt": "2026-11-04T10:02:59.000Z",
+          "url": null
+        },
+        {
+          "id": 1007,
+          "name": "Build package",
+          "status": "completed",
+          "conclusion": "success",
+          "labels": [
+            "ubuntu-latest"
+          ],
+          "startedAt": "2026-11-04T10:00:30.000Z",
+          "completedAt": "2026-11-04T10:02:07.000Z",
+          "url": null
+        }
+      ]
+    },
+    {
+      "id": 104,
+      "attempt": 2,
+      "workflow": "1",
+      "name": "CI",
+      "branch": "main",
+      "event": "push",
+      "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "conclusion": "failure",
+      "createdAt": "2026-11-05T09:59:45.000Z",
+      "url": null,
+      "jobsComplete": true,
+      "jobs": [
+        {
+          "id": 1008,
+          "name": "Test (Node 24)",
+          "status": "completed",
+          "conclusion": "success",
+          "labels": [
+            "ubuntu-latest"
+          ],
+          "startedAt": "2026-11-05T10:00:00.000Z",
+          "completedAt": "2026-11-05T10:03:07.000Z",
+          "url": null
+        },
+        {
+          "id": 1009,
+          "name": "Build package",
+          "status": "completed",
+          "conclusion": "failure",
+          "labels": [
+            "ubuntu-latest"
+          ],
+          "startedAt": "2026-11-05T10:00:30.000Z",
+          "completedAt": "2026-11-05T10:02:12.000Z",
+          "url": null
+        }
+      ]
+    }
+  ],
+  "benchmarks": null,
+  "metrics": {
+    "groups": [],
+    "longestJobs": []
+  },
+  "findings": [],
+  "costScenario": null,
+  "comparison": null,
+  "limitations": [
+    "Static inspection does not execute actions or resolve expressions, reusable workflows or action internals.",
+    "Execution span is earliest valid job start to latest valid job finish. Aggregate job time sums individual jobs.",
+    "Successful-run distributions exclude cancelled/failed runs and incomplete timing. Failed-job time remains in usage estimates.",
+    "Trigger-to-last-job intervals are observable only on first attempts; they are not proof of runner queue time.",
+    "No automatic workflow changes or runner installation."
+  ]
+}

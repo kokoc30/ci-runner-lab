@@ -1,0 +1,7 @@
+node_modules/
+.ci-runner-lab/
+BUILD_PLAN.md
+playwright-report/
+test-results/
+*.log
+.env*
