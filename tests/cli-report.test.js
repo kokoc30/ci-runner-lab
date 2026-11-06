@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { readFile, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { argumentsFor, wizard } from '../src/cli.js';
-import { createReport, validateReport, readReport, writeReport, htmlReport, markdownReport, safeUrl } from '../src/report.js';
+import { createReport, validateReport, readReport, writeReport, htmlReport, markdownReport, safeUrl, publishDirectory } from '../src/report.js';
 import { analyze } from '../src/analysis.js';
 const cli=path.resolve('src/cli.js');
 const invoke=(args,options={})=>spawnSync(process.execPath,[cli,...args],{encoding:'utf8',timeout:30000,...options});
@@ -56,4 +56,10 @@ test('unsafe HTML and links escaped, private and partial states visible in all f
 test('compare command uses saved validated reports and warns about overlapping demo samples',async t=>{
   const dir=await output(t);const d=JSON.parse(await readFile('fixtures/demo.json','utf8'));analyze(d);const first=await writeReport(d,dir);const p=path.join(path.dirname(first),'report.json');
   const result=invoke(['compare',p,p,'--no-open','--json','--out',dir]);assert.equal(result.status,0,result.stderr);const r=JSON.parse(result.stdout);assert.equal(r.comparison.comparable,false);assert.ok(r.comparison.warnings.some(x=>/overlap/.test(x)));
+});
+for (const code of ['EPERM', 'EACCES', 'EBUSY']) test(`atomic publication retries transient Windows ${code} locks`,async()=>{let calls=0;const waits=[];await publishDirectory('owned-temp','new-report',{platform:'win32',move:async()=>{if(++calls<3)throw Object.assign(new Error('locked'),{code});},pause:async ms=>{waits.push(ms);}});assert.equal(calls,3);assert.deepEqual(waits,[50,100]);});
+test('atomic publication bounds retries and preserves permanent failures',async()=>{
+  /** @type {Array<[NodeJS.Platform,string,number]>} */
+  const cases=[['win32','EPERM',5],['win32','ENOSPC',1],['linux','EPERM',1]];
+  for(const [platform,code,want] of cases){let calls=0;await assert.rejects(()=>publishDirectory('owned-temp','new-report',{platform,move:async()=>{calls++;throw Object.assign(new Error('failed'),{code});},pause:async()=>{}}),/failed/);assert.equal(calls,want);}
 });

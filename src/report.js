@@ -116,6 +116,19 @@ export function markdownReport(r) {
   return `# CI Runner Lab\n\n${r.mode === 'demo' ? '**SYNTHETIC DEMO — fictional evidence.**\n\n' : ''}${r.source.private === true ? '**PRIVATE METADATA — review before sharing.**\n\n' : ''}Status: **${md(r.status)}** · Mode: ${md(r.mode)} · ${md(r.generatedAt)}\n\nSource: ${md(r.source.label)} · revision ${md(r.source.revision)}\n\n## This computer\n\n${r.device ? `${md(r.device.os)} / ${md(r.device.architecture)} · ${r.device.parallelism} usable CPU slots · free RAM ${gib(r.device.freeBytes)}\n\n${md(r.device.planning.advice)}\n\n${r.device.limitations.map(x => `- ${md(x)}`).join('\n')}` : 'No device snapshot.'}\n\n## CI performance\n\nExecution span is elapsed job execution; aggregate sums individual jobs. Successful distributions exclude failed/cancelled/incomplete runs.\n\n${r.metrics.groups.map(g => `- ${md(g.name)} / ${md(g.branch)} / ${md(g.event)}: n=${g.span.n}, median span ${seconds(g.span.medianMs)}, range ${seconds(g.span.minMs)}–${seconds(g.span.maxMs)}, aggregate median ${seconds(g.aggregate.medianMs)}; excluded ${g.excludedRuns}.`).join('\n') || 'No observed run timing.'}\n\n${r.benchmarks ? `Benchmark ${md(r.benchmarks.script)}: ${md(r.benchmarks.status)}, n=${r.benchmarks.summary.n}, median ${seconds(r.benchmarks.summary.medianMs)}.\n\n${r.benchmarks.limitations.map(x => `- ${md(x)}`).join('\n')}` : ''}${r.comparison ? `\nComparison: before ${seconds(r.comparison.before.medianMs)}, after ${seconds(r.comparison.after.medianMs)}, descriptive change ${r.comparison.relativeMedianChangePercent ?? 'undefined'}%.\n\n${r.comparison.warnings.map(x => `- ${md(x)}`).join('\n')}` : ''}\n\n## Recommendations\n\n${r.findings.map(f => `### ${md(f.title)}\n\n${md(f.severity)} · ${md(f.confidence)} · ${md(f.id)}\n\n${md(f.explanation)}\n\nEvidence: ${md(f.evidence)}\n\nNext: ${md(f.nextAction)}\n`).join('\n') || 'No applicable findings.'}\n\n## Cost scenario\n\n${r.costScenario ? `Known subtotal ${money(r.costScenario.knownSubtotalUsd)}; known jobs ${r.costScenario.knownJobs}; unknown jobs ${r.costScenario.unknownJobs}; incomplete=${r.costScenario.incomplete}.\n\nMonthly scenario ${money(r.costScenario.monthlyScenarioUsd)}, runs/month ${r.costScenario.monthlyRuns ?? 'unknown'}; energy per median invocation ${money(r.costScenario.energyScenarioUsd)}. User-supplied average watts ${r.costScenario.powerWatts ?? 'unknown'}, USD/kWh ${r.costScenario.kwhPrice ?? 'unknown'}.\n\nRates verified ${md(r.costScenario.rates.verifiedAt)}; stale=${r.costScenario.rateTableStale}.\n\n${Object.entries(r.costScenario.rates.usdPerMinute).map(([k, v]) => `- ${md(k)}: ${v} USD/minute`).join('\n')}\n\n[Official pricing](${safeUrl(r.costScenario.rates.source) ?? ''}) · [Billing policy](${safeUrl(r.costScenario.rates.policy) ?? ''})\n\n${[...r.costScenario.assumptions, ...r.costScenario.exclusions].map(x => `- ${md(x)}`).join('\n')}` : 'No scenario.'}\n\n## Evidence and limitations\n\n${[...r.coverage.notes, ...r.coverage.excluded, ...r.limitations].map(x => `- ${md(x)}`).join('\n')}\n\n${r.runs.map(run => `- Run ${run.id}, attempt ${run.attempt}, ${md(run.name)} / ${md(run.branch)} / ${md(run.event)}: ${md(run.conclusion)}, revision ${md(run.sha)}, jobs ${run.jobs.length} (complete=${run.jobsComplete}). ${safeUrl(run.url) ? `[GitHub run](${safeUrl(run.url)})` : ''}`).join('\n')}\n\nFull structured inventory and invocation evidence: report.json (schema 1).\n`;
 }
 
+/** Windows scanners can briefly lock a newly written directory. Keep publication atomic,
+ * retry only transient lock errors, and preserve a real failure after a bounded wait. */
+export async function publishDirectory(temp, dest, { move = rename, platform = process.platform,
+  pause = ms => new Promise(resolve => setTimeout(resolve, ms)) } = {}) {
+  for (let attempt = 0; ; attempt++) {
+    try { await move(temp, dest); return; }
+    catch (e) {
+      if (platform !== 'win32' || !['EPERM', 'EACCES', 'EBUSY'].includes(e.code) || attempt >= 4) throw e;
+      await pause(50 * 2 ** attempt);
+    }
+  }
+}
+
 /** Directory rename publishes all three companions together; old reports never overwritten. */
 export async function writeReport(report, outputRoot) {
   validateReport(report);
@@ -127,7 +140,7 @@ export async function writeReport(report, outputRoot) {
     await writeFile(path.join(temp, 'report.html'), await htmlReport(report));
     await writeFile(path.join(temp, 'report.md'), markdownReport(report));
     await writeFile(path.join(temp, 'report.json'), JSON.stringify(report, null, 2) + '\n');
-    await rename(temp, dest);
-  } catch (e) { await rm(temp, { recursive: true, force: true }); throw e; }
+    await publishDirectory(temp, dest);
+  } catch (e) { await rm(temp, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 }); throw e; }
   return path.join(dest, 'report.html');
 }

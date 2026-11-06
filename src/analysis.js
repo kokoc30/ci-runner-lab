@@ -120,7 +120,8 @@ export function compareReports(before, after) {
   if (before.mode !== after.mode) warnings.push('Report modes differ.');
   if (before.status !== 'complete' || after.status !== 'complete') warnings.push('At least one report has incomplete data or failed execution.');
   if (before.mode === 'demo' || after.mode === 'demo') warnings.push('Synthetic demo observations are not independent performance measurements.');
-  if ([before, after].some(r => r.benchmarks && (r.benchmarks.dirty !== false || !r.benchmarks.commit))) warnings.push('Benchmark source is dirty, unversioned or unverified; workload equality is unknown.');
+  if ([before, after].some(r => r.benchmarks && (r.benchmarks.dirty !== false || !r.benchmarks.commit || r.benchmarks.packageTracked !== true))) warnings.push('Benchmark source is dirty, unversioned or unverified; workload equality is unknown.');
+  if (before.benchmarks && after.benchmarks && before.generatedAt === after.generatedAt && JSON.stringify(before.benchmarks.invocations) === JSON.stringify(after.benchmarks.invocations)) warnings.push('Benchmark observations overlap: these are the same saved executions, not independent samples.');
   if (before.benchmarks && after.benchmarks && JSON.stringify(before.benchmarks.limits) !== JSON.stringify(after.benchmarks.limits)) warnings.push('Benchmark warm-up, repetition or timeout settings differ.');
   const signature = r => JSON.stringify({ source: r.source.label, filters: r.source.filters, groups: r.metrics.groups.map(g => [g.workflow, g.branch, g.event]).sort(),
     script: r.benchmarks?.script, fingerprint: r.benchmarks?.fingerprint,

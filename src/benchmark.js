@@ -28,9 +28,10 @@ export async function prepareBenchmark(target, script, options = {}) {
 export async function benchmark(prepared, { allowExec = false, signal = undefined } = {}, execute = runProcess) {
   if (!allowExec) throw new Error('Execution denied. Review the script and pass --allow-exec, or confirm in the menu.');
   const environment = childEnvironment();
-  let commit = null, dirty = null;
+  let commit = null, dirty = null, packageTracked = null;
   try { const r = await execute('git', ['rev-parse', 'HEAD'], { cwd: prepared.root, env: environment }); if (r.code === 0 && /^[0-9a-f]{40}$/i.test(r.stdout.trim())) commit = r.stdout.trim(); } catch { /* Unversioned is valid. */ }
   try { const r = await execute('git', ['status', '--porcelain', '--untracked-files=normal'], { cwd: prepared.root, env: environment }); if (r.code === 0 && !r.truncated) dirty = r.stdout.trim().length > 0; } catch { /* Unknown is explicit. */ }
+  try { const r = await execute('git', ['ls-files', '--error-unmatch', '--', 'package.json'], { cwd: prepared.root, env: environment }); packageTracked = r.code === 0 && !r.truncated; } catch { /* Unknown is explicit. */ }
   const invocations = [];
   let status = 'passed';
   for (let i = 0; i < prepared.limits.warmups + prepared.limits.repetitions; i++) {
@@ -45,7 +46,7 @@ export async function benchmark(prepared, { allowExec = false, signal = undefine
       failureExcerpt: passed ? null : sanitize(r.stderr || r.stdout, true) });
     if (!passed) { status = r.interrupted ? 'interrupted' : 'failed'; break; }
   }
-  return { script: prepared.script, arguments: prepared.arguments, fingerprint: prepared.fingerprint, commit, dirty,
+  return { script: prepared.script, arguments: prepared.arguments, fingerprint: prepared.fingerprint, commit, dirty, packageTracked,
     limits: prepared.limits, invocations, status,
     summary: distribution(status === 'passed' ? invocations.filter(i => i.phase === 'measured').map(i => i.durationMs) : []),
     limitations: ['Elapsed time only; no measured tree RAM, CPU utilization or power.',
