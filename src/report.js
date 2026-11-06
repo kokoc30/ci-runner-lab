@@ -3,7 +3,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
 export function createReport(mode, source = { kind: 'local', label: 'This computer', private: null, revision: null }) {
-  return { schemaVersion: 1, toolVersion: '0.1.0', generatedAt: new Date().toISOString(), mode, status: 'complete',
+  return { schemaVersion: 1, toolVersion: '0.2.0', generatedAt: new Date().toISOString(), mode, status: 'complete',
     source, device: null, coverage: { requested: null, sampled: 0, excluded: [], notes: [] },
     workflows: [], runs: [], benchmarks: null, metrics: { groups: [], longestJobs: [] }, findings: [],
     costScenario: null, comparison: null,

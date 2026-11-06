@@ -1,21 +1,21 @@
 #!/usr/bin/env node
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readFile, mkdir, appendFile } from 'node:fs/promises';
+import { mkdir, appendFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 import { createInterface } from 'node:readline/promises';
 import open from 'open';
-import { createReport, readReport, writeReport } from './report.js';
-import { inspectDevice } from './device.js';
-import { inspectWorkflows } from './workflows.js';
-import { inspectGithub, validateRepo } from './github.js';
-import { analyze, compareReports, scenarioInputs } from './analysis.js';
-import { prepareBenchmark, benchmark, benchmarkLimits } from './benchmark.js';
+import { validateRepo } from './github.js';
+import { scenarioInputs } from './analysis.js';
+import { prepareBenchmark, benchmarkLimits } from './benchmark.js';
+import { runTask } from './tasks.js';
 import { sanitize } from './process.js';
 
 export const HELP = `CI Runner Lab — Understand your CI. Measure before changing it.
 
-  npm start                                    Guided menu (terminal only)
+  npm start                                    Local browser app (terminal only)
+  npm start -- ui --no-open                     Explicit local server
+  npm run cli                                  Guided terminal menu
   npm start -- demo                             Offline synthetic demo
   npm start -- doctor                           Inspect this computer
   npm start -- audit --path "my-project"         Read local workflow YAML
@@ -45,7 +45,7 @@ export function argumentsFor(argv) {
   const command = p[0];
   if (v.open && v['no-open']) throw new InputError('Choose --open or --no-open.');
   if (v.help) return { command: 'help', options: v, files: [] };
-  if (command && !['demo', 'doctor', 'audit', 'bench', 'compare'].includes(command)) throw new InputError(`Unknown command: ${command}. Use --help.`);
+  if (command && !['demo', 'doctor', 'audit', 'bench', 'compare', 'ui', 'cli'].includes(command)) throw new InputError(`Unknown command: ${command}. Use --help.`);
   if (command === 'compare' ? p.length !== 3 : p.length > 1) throw new InputError('Compare needs two report.json paths; other commands take named options.');
   if (command === 'audit' && Boolean(v.path) === Boolean(v.repo)) throw new InputError('Audit needs exactly one of --path or --repo.');
   if (command === 'bench' && (!v.path || !v.script)) throw new InputError('Benchmark needs --path and --script.');
@@ -106,56 +106,39 @@ export async function main(argv = process.argv.slice(2)) {
     let parsed = argumentsFor(argv);
     const interactive = Boolean(process.stdin.isTTY && process.stderr.isTTY && !process.env.CI);
     if (!parsed.command) {
-      if (!interactive) throw new InputError('Choose a command in noninteractive mode, for example: npm start -- demo --no-open');
+      if (!interactive) throw new InputError('Choose a command in noninteractive mode: npm start -- demo --no-open, or npm start -- ui --no-open for the local server.');
+      parsed = { command: 'ui', options: parsed.options, files: [] };
+    }
+    if (parsed.command === 'cli') {
+      if (!interactive) throw new InputError('The guided menu needs an interactive terminal; use an explicit command in noninteractive mode.');
       parsed = await promptSession(ask => wizard(ask, show));
       if (!parsed) return 0;
     }
     const { command, options: o, files } = parsed;
+    if (command === 'ui') {
+      if (Object.keys(o).some(k => !['open', 'no-open'].includes(k))) throw new InputError('The UI accepts only --open or --no-open.');
+      const { launchUi } = await import('./server.js');
+      await launchUi({ openBrowser: Boolean(o.open || (interactive && !o['no-open'])) });
+      return 0;
+    }
     const json = Boolean(o.json);
     if (command === 'help') { process.stdout.write(HELP); return 0; }
     const outputRoot = path.resolve(o.out ?? '.ci-runner-lab/reports');
-    let r = createReport(command);
-    if (command === 'demo') {
-      Object.assign(r, JSON.parse(await readFile(new URL('../fixtures/demo.json', import.meta.url), 'utf8')));
-      r.generatedAt = new Date().toISOString();
-    } else if (command === 'doctor') {
-      r.device = await inspectDevice(outputRoot);
-    } else if (command === 'audit') {
-      r.device = await inspectDevice(outputRoot);
-      if (o.repo) Object.assign(r, await inspectGithub(o.repo, { runs: Number(o.runs ?? 10), workflow: o.workflow, branch: o.branch, event: o.event }));
-      else {
-        const target = path.resolve(o.path);
-        r.source = { kind: 'local', label: target, private: null, revision: null };
-        const data = await inspectWorkflows(target); r.workflows = data.workflows;
-        r.coverage.excluded = data.excluded;
-        r.coverage.notes.push('Local YAML only; no repository code executed. Visibility and historical timing are unknown.');
-        if (data.excluded.length) r.status = 'partial';
-      }
-    } else if (command === 'bench') {
-      let prepared;
+    let prepared;
+    if (command === 'bench') {
       try { prepared = await prepareBenchmark(o.path, o.script, o); } catch (e) { throw new InputError(e.message); }
       show(`\nBenchmark directory: ${prepared.root}\nCommand: npm run ${prepared.script}\nWarm-ups: ${prepared.limits.warmups}; measured runs: ${prepared.limits.repetitions}; timeout: ${prepared.limits.timeout}s each\nMaximum execution budget: ${prepared.limits.maximumSeconds}s (a limit, not a prediction).\nWARNING: npm scripts and lifecycle hooks can change files and access the network. No resource sandbox.`);
       let allowed = Boolean(o['allow-exec']);
       if (!allowed && interactive) allowed = await promptSession(async ask => /^y(es)?$/i.test((await ask('Run this trusted script? [y/N]: ')) ?? ''));
       if (!allowed) throw new InputError('Execution denied; review the script, then use --allow-exec or confirm in the menu.');
-      r.source = { kind: 'local', label: prepared.root, private: null, revision: null };
-      r.device = await inspectDevice(outputRoot);
-      const controller = new AbortController(), interrupt = () => controller.abort();
-      process.on('SIGINT', interrupt);
-      try { r.benchmarks = await benchmark(prepared, { allowExec: true, signal: controller.signal }); }
-      finally { process.removeListener('SIGINT', interrupt); }
-      r.source.revision = r.benchmarks.commit;
-      if (r.benchmarks.status !== 'passed') r.status = r.benchmarks.status === 'interrupted' ? 'interrupted' : 'failed';
-    } else if (command === 'compare') {
-      let before, after;
-      try { [before, after] = await Promise.all(files.map(readReport)); } catch (e) { throw new InputError(e.message); }
-      r.source.label = `${before.source.label} → ${after.source.label}`;
-      r.source.kind = 'saved reports'; r.source.private = before.source.private === true || after.source.private === true ? true : null;
-      r.comparison = compareReports(before, after);
-      r.coverage.notes.push(`Before: ${before.generatedAt} (${before.mode}); after: ${after.generatedAt} (${after.mode}).`, ...r.comparison.warnings);
     }
-    r = analyze(r, { monthlyRuns: o['monthly-runs'], powerWatts: o['power-watts'], kwhPrice: o['kwh-price'] });
-    const output = await writeReport(r, outputRoot);
+    const controller = new AbortController(), interrupt = () => controller.abort();
+    process.on('SIGINT', interrupt);
+    let result;
+    try { result = await runTask(command, o, { outputRoot, files, prepared, allowExec: Boolean(prepared), signal: controller.signal }); }
+    catch (e) { if (command === 'compare') throw new InputError(e.message); throw e; }
+    finally { process.removeListener('SIGINT', interrupt); }
+    const { report: r, output } = result;
     show(`Report: ${output}`);
     if (json) process.stdout.write(JSON.stringify(r) + '\n');
     if (o.open || (interactive && !o['no-open'])) {
