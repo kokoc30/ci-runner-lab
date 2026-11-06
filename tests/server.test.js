@@ -21,12 +21,14 @@ async function setup(t, options = {}) {
   return { root, app, request, response, html, token };
 }
 async function finished(request) {
-  for (let i = 0; i < 200; i++) {
+  // Device collection permits two 15-second readiness probes, plus process cleanup.
+  const deadline = Date.now() + 45000;
+  while (Date.now() < deadline) {
     const state = await (await request('/api/state')).json();
     if (state.job?.status !== 'running') return state;
     await new Promise(resolve => setTimeout(resolve, 50));
   }
-  throw new Error('Task did not finish within 10 seconds.');
+  throw new Error('Task did not finish within 45 seconds.');
 }
 /** @param {string} root @param {Record<string, string>} [scripts] */
 async function fixture(root, scripts = { ok: 'node -e "require(\'fs\').writeFileSync(\'ran\',\'yes\')"' }) {
