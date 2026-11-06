@@ -124,6 +124,9 @@ test('app respects reduced transparency, reduced motion and 320px reflow', async
   const cdp = await context.newCDPSession(page);
   await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }, { name: 'prefers-reduced-transparency', value: 'reduce' }] });
   await page.setViewportSize({ width: 320, height: 900 }); await page.goto(app.url); await noOverflow(page);
+  await page.locator('.task-switch').evaluate(el => { el.style.letterSpacing = '0.12em'; });
+  await noOverflow(page);
+  await page.screenshot({ path: '.ci-runner-lab/qa/app-320-reflow.png', fullPage: true });
   expect(await page.locator('.task-switch').evaluate(el => window.getComputedStyle(el).backdropFilter)).toBe('none');
   expect(await page.evaluate(() => window.getComputedStyle(document.body, '::before').animationName)).toBe('none');
   await page.getByRole('button', { name: 'Try demo', exact: true }).click(); await ready(page); await noOverflow(page);
