@@ -7,12 +7,13 @@ export function childEnvironment(env = process.env) {
 }
 
 /** Sanitize short diagnostics, never a full command log. */
-export function sanitize(value) {
-  return String(value).replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '')
+export function sanitize(value, tail = false) {
+  const cleaned = String(value).replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '')
     .replace(/(?:gh[pousr]_|github_pat_)[A-Za-z0-9_]+/g, '[redacted]')
     .replace(/((?:token|password|authorization|secret)\s*[:=]\s*)\S+/gi, '$1[redacted]')
     .replace(/Bearer\s+\S+/gi, 'Bearer [redacted]')
-    .replace(/[\x00-\x08\x0b-\x1f\x7f]/g, '').slice(0, 1000);
+    .replace(/[\x00-\x08\x0b-\x1f\x7f]/g, '');
+  return tail ? cleaned.slice(-1000) : cleaned.slice(0, 1000);
 }
 
 /** Bounded argument-array spawning, with termination scoped to our owned PID tree.

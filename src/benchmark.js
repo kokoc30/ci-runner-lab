@@ -42,7 +42,7 @@ export async function benchmark(prepared, { allowExec = false, signal = undefine
     const passed = r.code === 0 && !r.timedOut && !r.interrupted && !r.truncated;
     invocations.push({ phase: i < prepared.limits.warmups ? 'warmup' : 'measured', durationMs: r.durationMs, exitCode: r.code,
       timedOut: r.timedOut, interrupted: r.interrupted, outputLimitExceeded: r.truncated,
-      failureExcerpt: passed ? null : sanitize(r.stderr || r.stdout) });
+      failureExcerpt: passed ? null : sanitize(r.stderr || r.stdout, true) });
     if (!passed) { status = r.interrupted ? 'interrupted' : 'failed'; break; }
   }
   return { script: prepared.script, arguments: prepared.arguments, fingerprint: prepared.fingerprint, commit, dirty,
