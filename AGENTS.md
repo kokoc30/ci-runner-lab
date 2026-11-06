@@ -9,7 +9,8 @@
 - Maintain an original, minimal neutral Liquid Glass identity: pearl/silver light surfaces, graphite dark surfaces, restrained depth and motion. Keep content legible; glass belongs primarily on navigation.
 - Avoid generic dark SaaS layouts, neon gradients, saturated teal/purple, repetitive card grids, excess text, boxes, permanent panels, and navigation.
 - Prioritize typography, whitespace, hierarchy, and large truthful visualizations. Use progressive disclosure for technical context. Add advanced features only for real product needs; every control must work.
-- Preserve CLI behavior, calculation logic, schema, benchmark consent, GitHub integration, offline reports, escaping, and the JavaScript-free CSP.
+- Preserve explicit CLI commands, shared task functions, calculations, schema-v1, benchmark consent, GitHub read-only audits, and JavaScript-free offline reports. Interactive `npm start` launches the browser app; `npm run cli` keeps the guided menu.
+- Keep the browser server on `127.0.0.1` with exact Host/Origin checks, session-token authorization, bounded inputs and controlled asset/report routes. Never serve arbitrary files or accept shell strings. Each benchmark needs a fresh reviewed, one-use approval; preserve cancellation and owned-process cleanup.
 - Keep dependencies and file counts low. Use native HTML/CSS before frameworks or animation libraries. Keep design notes concise.
 - Maintain keyboard access, visible focus, responsive layouts, print, light/dark appearance, reduced motion, and reduced transparency.
 - Inspect actual generated reports and browser screenshots at 1440, 1024, and 390 pixels in both themes; passing tests alone is not visual approval.

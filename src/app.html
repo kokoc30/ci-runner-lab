@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="session-token" content="__SESSION_TOKEN__">
+  <title>CI Runner Lab</title>
+  <link rel="stylesheet" href="/report.css">
+  <link rel="stylesheet" href="/app.css">
+  <script src="/app.js" defer></script>
+</head>
+<body class="app">
+  <a class="skip" href="#workspace">Skip to workspace</a>
+  <header><a class="brand" href="/"><span class="mark" aria-hidden="true">/</span> CI Runner Lab</a><span class="local-label">On your computer</span></header>
+  <main id="workspace" class="workspace" tabindex="-1">
+    <div class="task-switch" role="group" aria-label="Choose a task">
+      <button type="button" data-task="github" aria-pressed="true">Analyze GitHub</button>
+      <button type="button" data-task="doctor" aria-pressed="false">My computer</button>
+      <button type="button" data-task="bench" aria-pressed="false">Benchmark</button>
+      <button type="button" data-task="compare" aria-pressed="false">Compare</button>
+    </div>
+    <div id="entry">
+      <div class="intro"><h1 id="task-title">Understand your CI.</h1><p id="task-description">See where your workflows spend time, and what to investigate next.</p></div>
+      <form id="github-form" class="task-form" data-panel="github">
+        <label for="repo">GitHub repository</label>
+        <div class="input-action"><input id="repo" name="repo" placeholder="owner/repository" autocomplete="off" spellcheck="false" required maxlength="140"><button class="primary" type="submit">Analyze</button></div>
+        <details class="advanced"><summary>Advanced</summary><div class="form-grid">
+          <label>Recent runs<input name="runs" type="number" min="1" max="50" value="10" required></label>
+          <label>Workflow<input name="workflow" placeholder="ci.yml (optional)" maxlength="200" autocomplete="off"></label>
+          <label>Branch<input name="branch" placeholder="Any branch" maxlength="200" autocomplete="off"></label>
+          <label>Event<input name="event" placeholder="Any event" maxlength="200" autocomplete="off"></label>
+        </div></details>
+        <div class="under-form"><button class="text-button" id="demo" type="button">Try demo</button><span>No login needed for the demo.</span><details class="more"><summary>More</summary><button class="text-button" type="button" data-task="local">Inspect local workflows</button></details></div>
+        <p class="hint">GitHub analysis uses your existing <code>gh</code> login. If needed, run <code>gh auth login</code> in your terminal once.</p>
+      </form>
+      <form id="doctor-form" class="task-form" data-panel="doctor" hidden><p class="muted">A local snapshot of CPU, memory and available capacity. Worker suggestions are estimates, not resource limits.</p><button class="primary" type="submit">Check my computer</button></form>
+      <form id="local-form" class="task-form" data-panel="local" hidden><label for="local-path">Project directory</label><div class="input-action"><input id="local-path" name="path" placeholder="Paste the full local path" required autocomplete="off" maxlength="4096"><button class="primary" type="submit">Inspect workflows</button></div><p class="hint">Reads workflow YAML only. No project code is executed.</p></form>
+      <form id="bench-form" class="task-form" data-panel="bench" hidden>
+        <label for="bench-path">Trusted project directory</label><div class="input-action"><input id="bench-path" name="path" placeholder="Paste the full local path" required autocomplete="off" maxlength="4096"><button id="load-scripts" type="button">Load scripts</button></div>
+        <div id="script-picker" hidden><label for="script">npm script</label><select id="script" name="script" required></select>
+          <details class="advanced"><summary>Advanced</summary><div class="form-grid"><label>Warm-ups<input name="warmups" type="number" min="0" max="2" value="1" required></label><label>Measured runs<input name="repetitions" type="number" min="1" max="10" value="3" required></label><label>Timeout per run (seconds)<input name="timeout" type="number" min="1" max="600" value="120" required></label></div></details>
+          <button class="primary" type="submit">Review benchmark</button>
+        </div><p class="hint">Loading scripts only reads package.json. Nothing runs until you review and explicitly allow it.</p>
+      </form>
+      <form id="compare-form" class="task-form" data-panel="compare" hidden><div class="form-grid compare-inputs">
+        <div><label for="before">Before</label><select id="before" name="before" required><option value="">Choose a report</option></select><label class="file-label" for="before-file">Or load report.json<input id="before-file" type="file" accept=".json,application/json" data-import="before"></label></div>
+        <div><label for="after">After</label><select id="after" name="after" required><option value="">Choose a report</option></select><label class="file-label" for="after-file">Or load report.json<input id="after-file" type="file" accept=".json,application/json" data-import="after"></label></div>
+      </div><button class="primary" type="submit">Compare reports</button><p class="hint">Choose reports from this session or load saved JSON files. Differences in workloads and environments remain visible.</p></form>
+    </div>
+    <div id="feedback" role="alert" hidden></div>
+    <div id="progress" hidden><div class="progress-line"><span class="activity" aria-hidden="true"></span><p id="progress-text" role="status" aria-live="polite">Starting…</p><button id="cancel" type="button">Stop task</button></div><p class="hint">Keep this terminal and browser open. Progress reflects the work being done.</p></div>
+    <section id="result" tabindex="-1" hidden aria-label="Task result"></section>
+    <p id="session-status" class="hint" role="status"></p>
+  </main>
+  <footer class="app-footer"><span>Local only. No telemetry.</span><span>Stop the app with Ctrl+C in your terminal.</span></footer>
+  <dialog id="consent" aria-labelledby="consent-title"><h2 id="consent-title">Run this trusted script?</h2><p id="consent-path" class="muted"></p><pre id="consent-commands"></pre><p id="consent-limits"></p><p class="warning">This runs npm scripts and lifecycle hooks with your permissions. They can change files and access the network. <strong>This is not a sandbox.</strong></p><label class="consent-check"><input id="allow-run" type="checkbox">I trust this project and allow this run.</label><div class="dialog-actions"><button id="decline" type="button">Do not run</button><button id="confirm" class="primary" type="button" disabled>Run benchmark</button></div></dialog>
+</body>
+</html>

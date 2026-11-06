@@ -1,16 +1,15 @@
 # CI Runner Lab
 
-Understand your GitHub Actions workflows and measure trusted npm scripts with a small, local-first tool.
+Find slow GitHub Actions workflows, inspect your computer, and measure trusted npm scripts in a local browser app.
 
-- Try a synthetic demo, then inspect your computer's capacity.
-- Read workflow YAML and recent GitHub run/job metadata.
-- Review timings, evidence, recommendations and qualified cost scenarios.
-- Measure trusted npm scripts and compare saved reports with context warnings.
+![Demo: the working CI Runner Lab browser app showing fictional workflow timings, sample counts and findings.](docs/demo.jpg)
+
+*Demo — synthetic data, not measurements of your repository.*
 
 ## Quick start
 
-Use a current security-patched Node.js **24 LTS** release, or Node 22.13+ LTS.
-Git and npm are required. There is no application server to configure.
+Use a patched **Node.js 24 LTS** release and npm. Node **22.13+ LTS** is also supported.
+CI tests Node 24 on Windows, macOS and Linux, and Node 22 on Linux.
 
 ```sh
 git clone https://github.com/kokoc30/ci-runner-lab.git
@@ -19,109 +18,86 @@ npm ci
 npm start
 ```
 
-Choose **1** to see the demo. It works offline without a GitHub login or API key.
-The menu offers device inspection, GitHub analysis, local inspection,
-trusted-script benchmarking, and report comparison. Enter `back` at a target
-prompt to return to the menu, or `0` at the menu to exit.
+The app opens in your browser. Select **Try demo** to explore without a login,
+then enter a GitHub `owner/repository` to analyze real runs.
+Only GitHub audits need the separately installed [GitHub CLI](https://cli.github.com/):
+run `gh auth login` once in your terminal. No token is pasted into the app.
 
-In a terminal, finished reports open in your default browser.
-In CI or a noninteractive shell, choose a command explicitly; no prompt or
-browser opens by default. The tool prints the exact report path.
+The server listens only on `127.0.0.1`, on an available port printed in the terminal.
+Keep the terminal open; press **Ctrl+C** to stop it. In a noninteractive shell,
+`npm start` prints help rather than starting a persistent server. Use
+`npm start -- ui --no-open` when you explicitly want a local server without opening a browser.
 
-## Three useful commands
+## What it does
+
+- **Analyze GitHub:** inspect workflows and recent runs, with optional branch, event and workflow filters. Local YAML inspection is under **More**.
+- **My computer:** see CPU, memory and conservative worker suggestions. Observations and estimates stay separate.
+- **Benchmark:** load scripts from a trusted local project, review the command and limits, then explicitly allow each run. Stop a running task from the browser.
+- **Compare:** choose reports from the current session or load saved JSON files. Workload, revision and environment warnings accompany the result.
+
+The browser uses your system's light/dark appearance and reduced-motion/transparency settings.
+Technical evidence lives in expandable details and the complete report.
+Paste a local directory path for local inspection or benchmarking; there is no filesystem browser.
+Scripts or lifecycle hooks over 1,000 characters require the CLI so the browser never shows an incomplete approval preview.
+The most recent 30 reports are available in the current session. Restarting clears this list, not saved files.
+
+## CLI for advanced users
+
+All explicit CLI commands still work. The original guided terminal menu is `npm run cli`.
 
 ```sh
 npm start -- demo --no-open
+npm start -- doctor --no-open
 npm start -- audit --repo owner/repository --runs 10 --no-open
+npm start -- audit --path "my-project" --no-open
 npm start -- bench --path "my-project" --script test:ci --allow-exec --no-open
+npm start -- compare "before/report.json" "after/report.json" --no-open
 ```
 
-For GitHub history, install [GitHub CLI](https://cli.github.com/) and run
-`gh auth login` separately. CI Runner Lab never asks you to paste a token.
-GitHub.com is supported; GitHub Enterprise hosts are outside v0.1.
+Use `npm start -- --help` for limits, filters and optional cost inputs.
+`--out <directory>` changes the CLI output folder; `--open` opens a finished report.
+For clean machine-readable output, use `node src/cli.js demo --json --no-open`.
 
-Use `npm start -- --help` for local `audit --path`, `doctor`, `compare`,
-workflow/branch/event filters, and optional cost inputs.
-`--out <directory>` changes the output root; `--open` explicitly opens a report.
-For machine-readable output use `node src/cli.js demo --json --no-open`;
-progress and report paths go to stderr. npm itself can print a script banner.
+## Reports and boundaries
 
-## Reports and measurements
+Each task writes `report.html`, `report.md` and schema-v1 `report.json` into a unique
+folder under `.ci-runner-lab/reports/`. The browser links to the complete report and
+JSON/Markdown downloads. HTML reports remain self-contained, JavaScript-free,
+printable and usable offline. Review private repository metadata before sharing.
 
-Each command creates a unique directory under `.ci-runner-lab/reports/` with
-`report.html`, `report.md`, and versioned `report.json`. HTML is self-contained,
-JavaScript-free, responsive, printable and usable offline. No telemetry is sent.
-Reports stay in the invoking directory or explicit output root, not the target.
-Private-repository reports may contain sensitive metadata: review before sharing.
+Audits are read-only and never execute target code. Benchmarks execute npm scripts
+and lifecycle hooks with your normal permissions: **they are not sandboxed**.
+They can change files, access credentials on disk, use the network and spawn workers.
+Known GitHub/npm auth environment variables are removed. Timeouts, output caps and
+cancellation terminate owned process trees; detached/adversarial processes are outside that guarantee.
 
-Reports use a neutral glass navigation bar and system-matched light/dark appearance.
-Overview shows separate timing groups with zero-baseline median/range charts;
-Workflows, Benchmarks and Compare link to the evidence present in that report.
-Device information, costs and technical evidence expand with native keyboard-accessible
-disclosures. Empty sections explain the relevant terminal command. Reports never
-execute commands from the browser. Reduced motion/transparency and print are supported;
-the soft lighting settles once in four seconds rather than looping continuously.
+Elapsed time is measured; CPU utilization, process-tree memory and power are not.
+Successful-run timings exclude failed and incomplete runs. Execution span differs
+from aggregate job time. Only the latest run attempt is sampled. Cost scenarios
+are estimates with explicit assumptions, not bills or promised savings.
+Worker suggestions are heuristics, not resource limits. Static inspection leaves
+expressions and reusable workflow internals unresolved. GitHub Enterprise is not supported.
 
-Execution span and aggregate job time are separate. Timings are grouped by
-workflow, branch and event; successful speed distributions exclude failed or
-incompletely timed runs. Usage estimates still include known failed-job time.
-Only the latest run attempt is analyzed. Static source is read at the reported
-default-branch commit, which can differ from historical run revisions.
-
-Benchmark defaults are one warm-up and three sequential measured invocations,
-with a 120-second timeout each. Warm-ups do not enter the median. A failed,
-timed-out or interrupted invocation stops the benchmark and retains evidence.
-An output limit also aborts excessively noisy commands. Elapsed time is measured;
-total process-tree RAM, CPU usage and power are not. Comparisons are descriptive
-and flag changed workloads, revisions, environments and overlapping observations.
-
-## Safety and limits
-
-Audits are read-only and never execute repository code. Benchmarks require
-explicit consent and run npm scripts plus lifecycle hooks with your normal
-permissions: they can change files, access the network and spawn workers.
-Common auth environment variables are removed, but this is **not a sandbox**.
-Cleanup targets the owned process tree; detached/adversarial processes are outside
-that guarantee. Capacity advice is a conservative heuristic, not a resource limit.
-Cost estimates use dated list prices before allowances, retain unknown components,
-and exclude storage and other costs. There is no automatic runner installation
-or workflow rewriting. Expressions, action internals and reusable workflows
-remain unresolved by static inspection. No dependencies are installed in targets.
+There is no telemetry, account system, database, automatic workflow rewriting or
+runner installation. Keep the privileged app local; never reverse-proxy or publicly
+host it. Host/Origin checks and a per-session token protect browser requests.
+The optional public demonstration is only a static synthetic report, with no execution API.
 
 ## Development
 
-`npm run check` runs lint, JSDoc/TypeScript checks and offline unit/integration tests.
-Install the locked browser with `npx --no-install playwright install chromium`,
-then run `npm run test:ui`. Browsers are not needed for normal startup.
-CI checks Node 24 on Ubuntu, Windows and macOS, plus Node 22 on Ubuntu;
-Chromium report checks run on Ubuntu/Node 24. Only standard hosted runners are used.
-The lockfile pins a patched minimatch override for the development linter.
+```sh
+npm ci
+npm run check
+npx --no-install playwright install chromium
+npm run test:ui
+```
 
-The browser suite opens actual CLI-generated HTML offline at 390, 1024 and 1440px
-in light and dark mode, and checks keyboard access, navigation, print disclosures,
-contrast, reduced preferences, narrow reflow, failed measurements and HTML escaping.
-Viewport screenshots are saved in `.ci-runner-lab/qa/` by `npm run test:ui`.
+Checks cover calculations, CLI behavior, server boundaries, consent, cancellation,
+report escaping, real browser flows and responsive light/dark layouts. Browser
+screenshots are written to `.ci-runner-lab/qa/`. Automated browser coverage is Chromium.
+See [AGENTS.md](AGENTS.md) for the concise design and engineering standards.
 
-### Design skills
+Bug reports and focused contributions are welcome through [issues](https://github.com/kokoc30/ci-runner-lab/issues)
+and pull requests. Include reproduction steps and run the checks above.
 
-Project standards live in [AGENTS.md](AGENTS.md). On the development machine,
-these existing global skills were verified readable and discoverable by Codex
-on November 6, 2026; no global configuration or unrelated skills were changed:
-
-| Skill | Global location | Upstream license / dependencies |
-| --- | --- | --- |
-| [frontend-design](https://github.com/anthropics/skills/tree/main/skills/frontend-design) | `~/.agents/skills/frontend-design/SKILL.md` | Apache-2.0; instructions only |
-| [ui-ux-pro-max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) | `~/.agents/skills/ui-ux-pro-max/SKILL.md` | MIT; Python 3 standard library for local searches |
-| [web-design-guidelines](https://github.com/vercel-labs/agent-skills) | `~/.agents/skills/web-design-guidelines/SKILL.md` | MIT; instructions and a fetched review checklist |
-
-Upstream installation guidance was checked: Anthropic distributes an Agent Skills
-folder and Claude marketplace plugin; UI/UX Pro Max documents
-`npx ui-ux-pro-max-cli init --ai universal --global`; Vercel documents
-`npx skills add vercel-labs/agent-skills` (select only `web-design-guidelines`,
-Codex and global scope). Existing installations were reused instead of running
-installers. The local Python search modules were inspected for dependencies and
-network/process execution; the searches used here read bundled data locally.
-These are development aids, not application dependencies or a guarantee about
-future upstream changes. The report retains its original restrictive CSP.
-
-MIT licensed. See [LICENSE](LICENSE).
+[MIT license](LICENSE).
