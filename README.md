@@ -54,6 +54,14 @@ JavaScript-free, responsive, printable and usable offline. No telemetry is sent.
 Reports stay in the invoking directory or explicit output root, not the target.
 Private-repository reports may contain sensitive metadata: review before sharing.
 
+Reports use a neutral glass navigation bar and system-matched light/dark appearance.
+Overview shows separate timing groups with zero-baseline median/range charts;
+Workflows, Benchmarks and Compare link to the evidence present in that report.
+Device information, costs and technical evidence expand with native keyboard-accessible
+disclosures. Empty sections explain the relevant terminal command. Reports never
+execute commands from the browser. Reduced motion/transparency and print are supported;
+the soft lighting settles once in four seconds rather than looping continuously.
+
 Execution span and aggregate job time are separate. Timings are grouped by
 workflow, branch and event; successful speed distributions exclude failed or
 incompletely timed runs. Usage estimates still include known failed-job time.
@@ -88,5 +96,32 @@ then run `npm run test:ui`. Browsers are not needed for normal startup.
 CI checks Node 24 on Ubuntu, Windows and macOS, plus Node 22 on Ubuntu;
 Chromium report checks run on Ubuntu/Node 24. Only standard hosted runners are used.
 The lockfile pins a patched minimatch override for the development linter.
+
+The browser suite opens actual CLI-generated HTML offline at 390, 1024 and 1440px
+in light and dark mode, and checks keyboard access, navigation, print disclosures,
+contrast, reduced preferences, narrow reflow, failed measurements and HTML escaping.
+Viewport screenshots are saved in `.ci-runner-lab/qa/` by `npm run test:ui`.
+
+### Design skills
+
+Project standards live in [AGENTS.md](AGENTS.md). On the development machine,
+these existing global skills were verified readable and discoverable by Codex
+on November 6, 2026; no global configuration or unrelated skills were changed:
+
+| Skill | Global location | Upstream license / dependencies |
+| --- | --- | --- |
+| [frontend-design](https://github.com/anthropics/skills/tree/main/skills/frontend-design) | `~/.agents/skills/frontend-design/SKILL.md` | Apache-2.0; instructions only |
+| [ui-ux-pro-max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) | `~/.agents/skills/ui-ux-pro-max/SKILL.md` | MIT; Python 3 standard library for local searches |
+| [web-design-guidelines](https://github.com/vercel-labs/agent-skills) | `~/.agents/skills/web-design-guidelines/SKILL.md` | MIT; instructions and a fetched review checklist |
+
+Upstream installation guidance was checked: Anthropic distributes an Agent Skills
+folder and Claude marketplace plugin; UI/UX Pro Max documents
+`npx ui-ux-pro-max-cli init --ai universal --global`; Vercel documents
+`npx skills add vercel-labs/agent-skills` (select only `web-design-guidelines`,
+Codex and global scope). Existing installations were reused instead of running
+installers. The local Python search modules were inspected for dependencies and
+network/process execution; the searches used here read bundled data locally.
+These are development aids, not application dependencies or a guarantee about
+future upstream changes. The report retains its original restrictive CSP.
 
 MIT licensed. See [LICENSE](LICENSE).
